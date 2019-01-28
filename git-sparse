@@ -1,12 +1,32 @@
 #!/bin/sh
 #simple command for sparse-checkout
 
+# コマンド一発でsparse-checkout するための gitコマンド拡張スクリプト
+# 
+#   ワークスペース(.gitフォルダーがあるフォルダー）に .gitsparseファイル がある場合、
+#   その記述に合わせてsparse-checkoutが一括設定される。
+#   .gitsparseファイル が無い場合、全ての sparse-checkout設定がクリアされる。
+#
+# 注意: このファイルをPATHの通っている場所（標準的には c:\Users\ユーザー名\bin 配下）にコピーしておくこと
+
+
 # set this to workaround expr problems in shFlags on freebsd
 if uname -s | egrep -iq 'bsd'; then export EXPR_COMPAT=1; fi
 
 usage() {
 	echo "usage: git sparse"
 	echo "  prepare .gitsparse file before execute command."
+	echo "  if it's not found, sparse config of all repos will be removed."
+}
+
+clear_config() {
+    echo "Disable sparsecheckout recursive"
+
+    git config core.sparsecheckout false
+    git submodule foreach --recursive git config core.sparsecheckout false
+    
+    # delete existing sparse-checkout file
+    find .git/ -name "sparse-checkout" -exec rm -rf {} \;
 }
 
 main() {
@@ -17,9 +37,11 @@ main() {
     local file=".gitsparse"
     if [ ! -f "$file" ]
     then
-        usage
-        exit 1
+        clear_config
+        exit 0
     fi
+
+    echo "Enable sparsecheckout (recursive)"
     
     # set config
     git config core.sparsecheckout true
